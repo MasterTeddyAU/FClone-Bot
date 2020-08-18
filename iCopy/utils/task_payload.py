@@ -45,9 +45,8 @@ def task_buffer(ns):
         wait_list = task_list.find({"status": 0})
         for task in wait_list:
             if _cfg["general"]["cloner"] == "fclone":
-                flags = ["--drive-server-side-across-configs", "--check-first"]
-            else:
-                flags = ["--drive-server-side-across-configs"]
+                flags = ["--drive-server-side-across-configs", "--check-first", '-P', '--ignore-checksum' , '--stats=1s']
+
             command = []
 
             cloner = _cfg["general"]["cloner"]
@@ -78,7 +77,7 @@ def task_buffer(ns):
 
             chat_id = task["chat_id"]
 
-            task_process(chat_id, command, task, ns)
+            task_process(chat_id, command, task, ns, src_name)
 
             ns.x = 0
 
@@ -93,16 +92,16 @@ def task_buffer(ns):
         time.sleep(5)
 
 
-def task_process(chat_id, command, task, ns):
+def task_process(chat_id, command, task, ns, src_name):
     # mark is in processing in db
     task_list.update_one({"_id": task["_id"]}, {"$set": {"status": 2,}})
     db_counters.update({"_id": "last_task"}, {"task_id": task["_id"]}, upsert=True)
     chat_id = chat_id
     message = bot.send_message(chat_id=chat_id, text=_text[_lang]["ready_to_task"])
     message_id = message.message_id
-
+    dst_info = {}
     interval = 0.1
-    timeout = 60
+    timeout = 180
     xtime = 0
     old_working_line = 0
     current_working_line = 0
@@ -116,6 +115,8 @@ def task_process(chat_id, command, task, ns):
     task_eta_in_file = "-"
     task_current_prog_size_tail = ""
     task_total_prog_size_tail = ""
+    dst_id = task['dst_id']
+    src_link = r"https://drive.google.com/open?id={}".format(task["src_id"])
     start_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 
     for toutput in run(command):
@@ -176,7 +177,7 @@ def task_process(chat_id, command, task, ns):
             _text[_lang]["task_src_info"]
             + "\n"
             + "📃"
-            + task["src_name"]
+            + '<a href="{}">{}</a>'.format(src_link, src_name)
             + "\n"
             + "----------------------------------------"
             + "\n"
@@ -187,7 +188,7 @@ def task_process(chat_id, command, task, ns):
             + ":"
             + "\n"
             + "    ┕─📃"
-            + task["src_name"]
+            + src_name
             + "\n"
             + "----------------------------------------"
             + "\n\n"
@@ -261,15 +262,12 @@ def task_process(chat_id, command, task, ns):
     old_working_file = ""
     finished_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 
-    dst_endpoint_id = _gd.get_dst_endpoint_id(_gd(), dst_id, src_name)
-    if dst_endpoint_id:
-        dst_endpoint_link = r"https://drive.google.com/open?id={}".format(
-            dst_endpoint_id["id"]
-        )
-
     if ns.x == 0:
-        time.sleep(5)
+        time.sleep(4)
         prog_bar = _bar.status(100)
+        dst_info = _func.getIDbypath(dst_id, src_name)
+        dst_endpoint_id = dst_info['dst_endpoint_id']
+        dst_endpoint_link = dst_info['dst_endpoint_link']
         bot.edit_message_text(
             chat_id=chat_id,
             message_id=message_id,
@@ -281,9 +279,9 @@ def task_process(chat_id, command, task, ns):
             + str(task["_id"])
             + "\n\n"
             + message_info.replace(
-                "    ┕─📃" + task["src_name"],
+                "    ┕─📃" + src_name,
                 "    ┕─📃"
-                + '<a href="{}">{}</a>'.format(dst_endpoint_link, task["src_name"]),
+                + '<a href="{}">{}</a>'.format(dst_endpoint_link, src_name),
             )
             + "\n"
             + _text[_lang]["task_finished_time"]
@@ -311,7 +309,7 @@ def task_process(chat_id, command, task, ns):
                             "task_current_prog_size_tail": task_current_prog_size_tail,
                             "task_total_prog_size_tail": task_total_prog_size_tail,
                             "dst_endpoint_link": dst_endpoint_link,
-                            "dst_endpoint_id": dst_endpoint_id["id"],
+                            "dst_endpoint_id": dst_endpoint_id,
                         }
                     },
                 )
@@ -330,7 +328,7 @@ def task_process(chat_id, command, task, ns):
                             "task_current_prog_size_tail": task_current_prog_size_tail,
                             "task_total_prog_size_tail": task_total_prog_size_tail,
                             "dst_endpoint_link": dst_endpoint_link,
-                            "dst_endpoint_id": dst_endpoint_id["id"],
+                            "dst_endpoint_id": dst_endpoint_id,
                         }
                     },
                 )
@@ -351,7 +349,7 @@ def task_process(chat_id, command, task, ns):
                             "task_current_prog_size_tail": "",
                             "task_total_prog_size_tail": "",
                             "dst_endpoint_link": dst_endpoint_link,
-                            "dst_endpoint_id": dst_endpoint_id["id"],
+                            "dst_endpoint_id": dst_endpoint_id,
                         }
                     },
                 )
@@ -370,7 +368,7 @@ def task_process(chat_id, command, task, ns):
                             "task_current_prog_size_tail": "",
                             "task_total_prog_size_tail": "",
                             "dst_endpoint_link": dst_endpoint_link,
-                            "dst_endpoint_id": dst_endpoint_id["id"],
+                            "dst_endpoint_id": dst_endpoint_id,
                         }
                     },
                 )
@@ -458,7 +456,7 @@ def task_message_box(bot, chat_id, message_id, context):
     global context_old
     context_old = "iCopy"
     if context_old != context:
-        bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=context)
+        bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=context, parse_mode=ParseMode.HTML, disable_web_page_preview=True,)
         context_old = context
 
 
