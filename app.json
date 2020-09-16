@@ -92,7 +92,7 @@
 			"url": "https://github.com/opendoor-labs/heroku-buildpack-p7zip.git"
 		},
 		{
-			"url" : "https://github.com/Nenokkadine/Fpack.git"
+			"url" : "https://github.com/arlessweschler/fclone_bin.git"
 		}
 	],
     	"formation": {
