@@ -28,7 +28,7 @@ echo "[$RCLONE_RMT]
 type = drive
 scope = drive
 "service_account_file = /app/iCopy/accounts/$SA_INIT_FILE"
-"service_account_file_path = $SA_PATH"
+"service_account_file_path = /app/iCopy/accounts/"
 "team_drive = $FOLDER_ID"
 " >> rclone.conf
 cd ..
